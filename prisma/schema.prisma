@@ -1,0 +1,176 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        Int      @id @default(autoincrement())
+  username  String   @unique @db.VarChar(50)
+  email     String   @unique @db.VarChar(100)
+  password  String   @db.VarChar(255)
+  role      Role     @default(USER)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  budgets      Budget[]
+  expenses     Expense[]
+  customers    Customer[]
+  orders       Order[]
+  tasks        Task[]
+  transactions Transaction[]
+
+  @@map("users")
+}
+
+model Budget {
+  id          Int            @id @default(autoincrement())
+  name        String         @db.VarChar(100)
+  limit       Decimal        @db.Decimal(10, 2)
+  spent       Decimal        @default(0) @db.Decimal(10, 2)
+  category    BudgetCategory @default(OTHER)
+  description String?        @db.Text
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+
+  ownerId  Int
+  owner    User      @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  expenses Expense[]
+
+  @@map("budgets")
+}
+
+model Expense {
+  id          Int      @id @default(autoincrement())
+  description String   @db.VarChar(255)
+  amount      Decimal  @db.Decimal(10, 2)
+  category    String?  @db.VarChar(50)
+  date        DateTime @default(now())
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  budgetId Int
+  budget   Budget @relation(fields: [budgetId], references: [id], onDelete: Cascade)
+
+  ownerId Int
+  owner   User @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+
+  @@map("expenses")
+}
+
+model Customer {
+  id        Int      @id @default(autoincrement())
+  name      String   @db.VarChar(100)
+  email     String   @unique @db.VarChar(100)
+  phone     String?  @db.VarChar(20)
+  address   String?  @db.Text
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  ownerId Int
+  owner   User    @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  orders  Order[]
+
+  @@map("customers")
+}
+
+model Order {
+  id        Int         @id @default(autoincrement())
+  amount    Decimal     @db.Decimal(10, 2)
+  status    OrderStatus @default(PENDING)
+  createdAt DateTime    @default(now())
+  updatedAt DateTime    @updatedAt
+
+  customerId Int
+  customer   Customer  @relation(fields: [customerId], references: [id], onDelete: Cascade)
+
+  ownerId Int
+  owner   User        @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  items   OrderItem[]
+
+  @@map("orders")
+}
+
+model OrderItem {
+  id       Int     @id @default(autoincrement())
+  name     String  @db.VarChar(100)
+  quantity Int
+  price    Decimal @db.Decimal(10, 2)
+
+  orderId Int
+  order   Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  @@map("order_items")
+}
+
+model Task {
+  id          Int          @id @default(autoincrement())
+  description String       @db.Text
+  status      TaskStatus   @default(PENDING)
+  priority    TaskPriority @default(MEDIUM)
+  dueDate     DateTime?
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+
+  ownerId Int
+  owner   User @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+
+  @@map("tasks")
+}
+
+model Transaction {
+  id          Int             @id @default(autoincrement())
+  type        TransactionType
+  amount      Decimal         @db.Decimal(10, 2)
+  description String?         @db.VarChar(255)
+  referenceId String?         @db.VarChar(100)
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+
+  ownerId Int
+  owner   User @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+
+  @@map("transactions")
+}
+
+enum Role {
+  USER
+  ADMIN
+}
+
+enum BudgetCategory {
+  PERSONAL
+  BUSINESS
+  TRAVEL
+  FOOD
+  HEALTH
+  OTHER
+}
+
+enum OrderStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  CANCELLED
+}
+
+enum TaskStatus {
+  PENDING
+  IN_PROGRESS
+  COMPLETED
+  FAILED
+}
+
+enum TaskPriority {
+  LOW
+  MEDIUM
+  HIGH
+}
+
+enum TransactionType {
+  CREDIT
+  DEBIT
+}
