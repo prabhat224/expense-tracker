@@ -1,80 +1,69 @@
-import "dotenv/config";
-import express     from "express";
-import cors        from "cors";
-import helmet      from "helmet";
-import morgan      from "morgan";
-import rateLimit   from "express-rate-limit";
-import swaggerUi   from "swagger-ui-express";
-import swaggerSpec from "./config/swagger.js";
-import router      from "./routes.js";
-import prisma      from "./config/prisma.js";
+import 'dotenv/config'
+import express from 'express'
+import helmet from 'helmet'
+import cors from 'cors'
+import cookieParser from 'cookie-parser'
+import rateLimit from 'express-rate-limit'
+import swaggerUi from 'swagger-ui-express'
+import swaggerSpec from './config/swagger.js'
+import routes from './routes.js'
+import { requestLogger } from './utils/logger.js'
+import { errorHandler, notFound } from './middleware/error.middleware.js'
+import logger from './utils/logger.js'
 
-const app = express();
+const app  = express()
+const PORT = process.env.PORT || 3000
 
-app.use(helmet());
-app.use(cors());
-app.use(morgan("dev"));
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+// ── Security & Parsing ────────────────────────────────────
+app.use(helmet())
+app.use(cors({ origin: process.env.FRONTEND_URL || 'http://localhost:3001', credentials: true }))
+app.use(cookieParser())
+app.use(express.json())
+app.use(express.urlencoded({ extended: true }))
 
-app.use("/api/", rateLimit({
+// ── Request Logger ────────────────────────────────────────
+app.use(requestLogger)
+
+// ── Rate Limiting ─────────────────────────────────────────
+app.use('/api/', rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 100,
-  message: { success: false, message: "Too many requests. Please try again later." },
-}));
+  max:      100,
+  message:  { success: false, message: 'Too many requests. Try again in 15 minutes.' },
+}))
 
-app.use("/docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec, {
-  customSiteTitle: "💰 Budget API Docs",
-  customCss: ".swagger-ui .topbar { background-color: #1a1a2e; }",
-}));
+// ── Docs ──────────────────────────────────────────────────
+app.use('/docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec))
 
-app.get("/", (req, res) => {
-  res.json({
-    message: "💰 Budget Management API v2 is running!",
-    stack: "MySQL + Prisma + ES Modules",
-    docs: "/docs",
-    endpoints: {
-      auth:         "/api/auth",
-      users:        "/api/users",
-      budgets:      "/api/budgets",
-      expenses:     "/api/expenses",
-      customers:    "/api/customers",
-      orders:       "/api/orders",
-      tasks:        "/api/tasks",
-      transactions: "/api/transactions",
-    },
-  });
-});
+// ── Routes ────────────────────────────────────────────────
+app.get('/', (req, res) => res.json({
+  success: true,
+  message: '💰 BudgetCo API v2',
+  docs:    `http://localhost:${PORT}/docs`,
+  phase:   'Phase 2 — Redis + Zod + Pagination + Refresh Tokens + Winston',
+}))
 
-app.get("/health", async (req, res) => {
+app.get('/health', async (req, res) => {
+  const { default: prisma } = await import('./config/prisma.js')
+  const { default: redis  } = await import('./config/redis.js')
   try {
-    await prisma.$queryRaw`SELECT 1`;
-    res.json({ status: "ok", database: "connected", uptime: process.uptime() });
-  } catch {
-    res.status(503).json({ status: "error", database: "disconnected" });
+    await prisma.$queryRaw`SELECT 1`
+    const redisPing = await redis.ping()
+    res.json({ success: true, mysql: '✅', redis: redisPing === 'PONG' ? '✅' : '❌' })
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message })
   }
-});
+})
 
-app.use("/api", router);
+app.use('/api', routes)
 
-app.use((req, res) => {
-  res.status(404).json({ success: false, message: `Route ${req.originalUrl} not found.` });
-});
+// ── Error Handling ────────────────────────────────────────
+app.use(notFound)
+app.use(errorHandler)
 
-app.use((err, req, res, next) => {
-  console.error("❌ Error:", err.stack);
-  res.status(err.status || 500).json({
-    success: false,
-    message: err.message || "Internal Server Error",
-    ...(process.env.NODE_ENV === "development" && { stack: err.stack }),
-  });
-});
-
-const PORT = process.env.PORT || 3000;
+// ── Start ─────────────────────────────────────────────────
 app.listen(PORT, () => {
-  console.log(`\n🚀 Server:  http://localhost:${PORT}`);
-  console.log(`📚 Docs:    http://localhost:${PORT}/docs`);
-  console.log(`🗄️  DB:      MySQL via Prisma\n`);
-});
-
-export default app;
+  logger.info(`🚀 Server running at http://localhost:${PORT}`)
+  logger.info(`📚 Docs at http://localhost:${PORT}/docs`)
+  logger.info(`🗄️  MySQL via Prisma`)
+  logger.info(`⚡ Redis cache active`)
+})

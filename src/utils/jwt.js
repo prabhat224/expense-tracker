@@ -1,11 +1,21 @@
-import jwt from "jsonwebtoken";
+import jwt from 'jsonwebtoken'
 
-export const generateToken = (userId) =>
+export const generateAccessToken = (userId) =>
   jwt.sign(
-    { id: userId },
+    { id: userId, type: 'access' },
     process.env.JWT_SECRET,
-    { expiresIn: process.env.JWT_EXPIRES_IN || "7d" }
-  );
+    { expiresIn: process.env.JWT_ACCESS_EXPIRES || '15m' }
+  )
+
+export const generateRefreshToken = (userId) =>
+  jwt.sign(
+    { id: userId, type: 'refresh' },
+    process.env.JWT_SECRET,
+    { expiresIn: process.env.JWT_REFRESH_EXPIRES || '7d' }
+  )
 
 export const verifyToken = (token) =>
-  jwt.verify(token, process.env.JWT_SECRET);
+  jwt.verify(token, process.env.JWT_SECRET)
+
+// Keep backward compat
+export const generateToken = generateAccessToken

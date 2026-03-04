@@ -1,34 +1,50 @@
-import { registerUser, loginUser } from "./auth.service.js";
-import { successResponse, errorResponse } from "../../utils/response.js";
+import { registerUser, loginUser, refreshAccessToken, logoutUser } from './auth.service.js'
+import { successResponse, errorResponse } from '../../utils/response.js'
 
-export const register = async (req, res) => {
+export const register = async (req, res, next) => {
   try {
-    const { username, email, password } = req.body;
-    if (!username || !email || !password)
-      return errorResponse(res, "username, email, and password are required.", 400);
-    const data = await registerUser({ username, email, password });
-    return successResponse(res, data, "User registered successfully.", 201);
-  } catch (err) {
-    return errorResponse(res, err.message, err.status || 500, err);
-  }
-};
+    const data = await registerUser(req.body)
+    return successResponse(res, data, 'User registered successfully.', 201)
+  } catch (err) { next(err) }
+}
 
-export const login = async (req, res) => {
+export const login = async (req, res, next) => {
   try {
-    const { email, password } = req.body;
-    if (!email || !password)
-      return errorResponse(res, "Email and password are required.", 400);
-    const data = await loginUser({ email, password });
-    return successResponse(res, data, "Login successful.");
-  } catch (err) {
-    return errorResponse(res, err.message, err.status || 500, err);
-  }
-};
+    const data = await loginUser(req.body)
+    // Set refresh token as httpOnly cookie
+    res.cookie('refreshToken', data.refreshToken, {
+      httpOnly: true,
+      secure:   process.env.NODE_ENV === 'production',
+      sameSite: 'strict',
+      maxAge:   7 * 24 * 60 * 60 * 1000,
+    })
+    return successResponse(res, { accessToken: data.accessToken, user: data.user }, 'Login successful.')
+  } catch (err) { next(err) }
+}
 
-export const logout = (req, res) => {
-  return successResponse(res, null, "Logged out successfully. Please discard your token.");
-};
+export const refresh = async (req, res, next) => {
+  try {
+    const refreshToken = req.cookies?.refreshToken || req.body?.refreshToken
+    const tokens = await refreshAccessToken(refreshToken)
+    res.cookie('refreshToken', tokens.refreshToken, {
+      httpOnly: true,
+      secure:   process.env.NODE_ENV === 'production',
+      sameSite: 'strict',
+      maxAge:   7 * 24 * 60 * 60 * 1000,
+    })
+    return successResponse(res, { accessToken: tokens.accessToken }, 'Token refreshed.')
+  } catch (err) { next(err) }
+}
+
+export const logout = async (req, res, next) => {
+  try {
+    const refreshToken = req.cookies?.refreshToken || req.body?.refreshToken
+    await logoutUser(req.user.id, refreshToken)
+    res.clearCookie('refreshToken')
+    return successResponse(res, null, 'Logged out successfully.')
+  } catch (err) { next(err) }
+}
 
 export const getMe = async (req, res) => {
-  return successResponse(res, { user: req.user }, "User fetched.");
-};
+  return successResponse(res, { user: req.user }, 'User fetched.')
+}
