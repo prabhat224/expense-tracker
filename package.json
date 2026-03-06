@@ -14,7 +14,10 @@
     "db:reset": "prisma migrate reset"
   },
   "dependencies": {
+    "@elastic/elasticsearch": "^9.3.4",
     "@prisma/client": "^5.14.0",
+    "@types/pg": "^8.18.0",
+    "amqplib": "^0.10.9",
     "bcryptjs": "^2.4.3",
     "cookie-parser": "^1.4.7",
     "cors": "^2.8.5",
@@ -24,8 +27,12 @@
     "helmet": "^7.1.0",
     "ioredis": "^5.10.0",
     "jsonwebtoken": "^9.0.2",
+    "kafkajs": "^2.2.4",
     "morgan": "^1.10.0",
+    "pg": "^8.20.0",
     "redis": "^5.11.0",
+    "sequelize": "^6.37.7",
+    "socket.io": "^4.8.3",
     "swagger-jsdoc": "^6.2.8",
     "swagger-ui-express": "^5.0.1",
     "uuid": "^13.0.0",
@@ -34,6 +41,7 @@
     "zod-validation-error": "^5.0.0"
   },
   "devDependencies": {
+    "@types/amqplib": "^0.10.8",
     "@types/cookie-parser": "^1.4.10",
     "@types/uuid": "^10.0.0",
     "nodemon": "^3.1.3",
