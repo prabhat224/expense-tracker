@@ -1,0 +1,59 @@
+{
+  "title": "BudgetCo API Dashboard",
+  "uid":   "budgetco-main",
+  "time":  { "from": "now-1h", "to": "now" },
+  "refresh": "10s",
+  "panels": [
+    {
+      "id": 1, "type": "stat", "title": "Total Requests",
+      "gridPos": { "x": 0, "y": 0, "w": 4, "h": 4 },
+      "targets": [{ "expr": "sum(http_requests_total)", "legendFormat": "Requests" }],
+      "options": { "colorMode": "background", "graphMode": "area" }
+    },
+    {
+      "id": 2, "type": "stat", "title": "Requests/sec",
+      "gridPos": { "x": 4, "y": 0, "w": 4, "h": 4 },
+      "targets": [{ "expr": "sum(rate(http_requests_total[1m]))", "legendFormat": "req/s" }],
+      "options": { "colorMode": "background" }
+    },
+    {
+      "id": 3, "type": "stat", "title": "Error Rate",
+      "gridPos": { "x": 8, "y": 0, "w": 4, "h": 4 },
+      "targets": [{ "expr": "sum(rate(http_requests_total{status_code=~'5..'}[5m])) / sum(rate(http_requests_total[5m])) * 100", "legendFormat": "% errors" }],
+      "options": { "colorMode": "background", "thresholds": { "steps": [{ "color": "green", "value": null }, { "color": "red", "value": 5 }] } }
+    },
+    {
+      "id": 4, "type": "stat", "title": "Active Connections",
+      "gridPos": { "x": 12, "y": 0, "w": 4, "h": 4 },
+      "targets": [{ "expr": "active_connections", "legendFormat": "connections" }],
+      "options": { "colorMode": "background" }
+    },
+    {
+      "id": 5, "type": "timeseries", "title": "Request Rate by Method",
+      "gridPos": { "x": 0, "y": 4, "w": 12, "h": 8 },
+      "targets": [{ "expr": "sum by (method) (rate(http_requests_total[1m]))", "legendFormat": "{{method}}" }]
+    },
+    {
+      "id": 6, "type": "timeseries", "title": "P99 Response Time (seconds)",
+      "gridPos": { "x": 12, "y": 4, "w": 12, "h": 8 },
+      "targets": [{ "expr": "histogram_quantile(0.99, sum by (le, route) (rate(http_request_duration_seconds_bucket[5m])))", "legendFormat": "{{route}}" }]
+    },
+    {
+      "id": 7, "type": "timeseries", "title": "Node.js Heap Memory",
+      "gridPos": { "x": 0, "y": 12, "w": 12, "h": 6 },
+      "targets": [
+        { "expr": "nodejs_heap_size_used_bytes / 1024 / 1024", "legendFormat": "Used (MB)" },
+        { "expr": "nodejs_heap_size_total_bytes / 1024 / 1024", "legendFormat": "Total (MB)" }
+      ]
+    },
+    {
+      "id": 8, "type": "timeseries", "title": "Business Metrics",
+      "gridPos": { "x": 12, "y": 12, "w": 12, "h": 6 },
+      "targets": [
+        { "expr": "rate(budgets_created_total[5m])", "legendFormat": "Budgets created/min" },
+        { "expr": "rate(expenses_created_total[5m])", "legendFormat": "Expenses created/min" }
+      ]
+    }
+  ],
+  "schemaVersion": 36
+}
