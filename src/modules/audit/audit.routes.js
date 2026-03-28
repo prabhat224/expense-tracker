@@ -20,7 +20,8 @@ router.get('/', protect, restrictTo('ADMIN'), async (req, res, next) => {
 
 router.get('/me', protect, async (req, res, next) => {
   try {
-    const logs = await getAuditLog({ userId: req.user.id })
+    const { limit, offset } = req.query
+    const logs = await getAuditLog({ userId: req.user.id, limit: Number(limit) || 25, offset: Number(offset) || 0 })
     return successResponse(res, { count: logs.length, logs })
   } catch (err) { next(err) }
 })
